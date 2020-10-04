@@ -51,11 +51,12 @@ And see if you can figure out what range the likert scores are in. What's the hi
 
 ```{r}
 ## your code here
-
+unique(d$Game1Angry1)
+range(d$Game1Angry1)
 ```
 
-Highest number: [Your answer here]
-Lowest number: [Your answer here]
+Highest number: 7
+Lowest number: 1
 
 # cleaning up a bit
 
@@ -70,9 +71,13 @@ First, we need to `filter` out any rows that should be excluded. According to th
 >> participant 23 was set up on part 2 of the study (the music ratings) twice and never did part 1"
 
 You can see participant 23's data and the fact that they did not do part 1 by looking at the last rows of the dataframe:
-
 ```{r}
+nrow(d)
 tail(d)
+filtered_by_subjects_d = d %>%
+    filter( Subject != '23' & Subject != '2') 
+nrow(filtered_by_subjects_d)
+tail(filtered_by_subjects_d)
 ```
 
 Notice that participant 23 has missing values for part 1.
@@ -80,8 +85,10 @@ Notice that participant 23 has missing values for part 1.
 The researchers have made a column called `DoNotUse` based on their exlusion criteria. Use this column to filter the dataframe! (hint: this is a little trickier than it might be because of how R treats NA values. You may want to use `?unique` to check values in the column and check out `?is.na`.)
 
 ```{r}
+nrow(d)
 filtered_d = d %>% 
-  filter(   ) # your code here: exclude subjects that are marked as "DoNotUse"
+  filter( is.na(DoNotUse)  ) # your code here: exclude subjects that are marked as "DoNotUse"
+nrow(filtered_d)
 ```
 
 It's good practice to assign a new variable name (in this case `filtered_d`) to a data frame when you change it in an important way, or apply a code chunk that shouldn't be run twice. This helps prevent you seeing different results when you run your code in chunks (and might run one multiple times, or skip it, etc.) vs. knit the document.
@@ -118,7 +125,10 @@ Now you try! Fill in the selection criteria to get rid of the "Game" columns, wh
 
 ```{r}
 performance_hyp_d = filtered_d %>% 
-  select( ) # your code here: remove the columns containing "Game" in the name
+  select( c("Subject", "Cond"),    # Import for both hypothesis
+          -contains("Games"),     # your code here: remove the columns containing "Game" in the name
+          starts_with("DinerDash"), 
+          starts_with("SOF") ) # two columns needed for performance hypothesis
 ```
 
 # Converting to long form
@@ -137,7 +147,7 @@ tiny_demo_d
 Now, take a look at the long-form version:
 ```{r}
 tiny_demo_d %>% pivot_longer(cols=-c("Subject", "Cond"), # this tells it to transform all columns *except* these ones
-                             names_to='Measurment', 
+                             names_to='Measurement', 
                              values_to='Value')
 ```
 
@@ -148,7 +158,7 @@ Now let's actually convert the performance dataset
 ```{r}
 performance_hyp_long_d = performance_hyp_d %>%
   pivot_longer(cols=-c("Subject", "Cond"),
-               names_to='Measurment', 
+               names_to='Measurement', 
                values_to='Score')
 
 head(performance_hyp_long_d)
@@ -159,7 +169,9 @@ And you can convert the rating dataset! (Call the "Key" column "Measurement" and
 ```{r}
 rating_hyp_long_d = rating_hyp_d %>%
   ## your code here
-
+  pivot_longer(cols=-c("Subject", "Cond"),
+               names_to="Measurement", 
+               values_to="Rating")
 head(rating_hyp_long_d)
 ```
 
@@ -180,7 +192,8 @@ Now you can help! For the rating dataset, write a test on a measurement name, us
 ```{r}
 rating_hyp_long_d = rating_hyp_long_d %>%
   mutate(
-    IsRecall = ,## Your code here
+    ## Your code here
+    IsRecall = grepl('Friends', Measurement) | grepl('Strangers', Measurement),
   )
 ```
 
@@ -229,6 +242,8 @@ The rating hypothesis analysis also requires some grouped manipulation. The expe
 ```{r}
 rating_summary_d = rating_hyp_long_d %>% 
   ## your code here
+  group_by(Emotion, ConfrontationalGame) %>%
+  summarize(MeanRating = mean(Rating))
 ```
 
 Let's take a look at the result:
@@ -279,8 +294,11 @@ If you don't understand every step of that code (or any other `dplyr` code), it 
 Now we're finally to reproduce Fig. 2 from Tamir et al., we just need to get the mean differences within each game and each kind of music, and save them to a variable called `MeanImprovementScore`:
 
 ```{r}
-performance_diff_summary_d = performance_diff_d %>%
+performance_diff_summary_d = performance_diff_d %>% 
+  filter(!is.na(ImprovementScore)) %>%    # remove NA values
   ## Your code here
+  group_by(ConfrontationalGame, MusicCondition) %>%
+  summarise(MeanImprovementScore=mean(ImprovementScore))
 ```
 
 Let's take a look at your result (if it has `NA` values, how can you fix it?):
